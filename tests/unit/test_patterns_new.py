@@ -2245,7 +2245,7 @@ class TestSupplyChainDependencies:
 
 
 class TestSupplyChainSafePatterns:
-    """SC2 findings from trusted sources should be downgraded to LOW."""
+    """A familiar download host does not make an executable script safe."""
 
     @pytest.mark.parametrize(
         "content",
@@ -2257,18 +2257,19 @@ class TestSupplyChainSafePatterns:
             pytest.param("curl https://github.com/user/repo/install.sh | bash", id="github_com"),
         ],
     )
-    def test_sc2_trusted_source_downgraded(self, content: str) -> None:
+    def test_sc2_trusted_source_remains_high(self, content: str) -> None:
         findings = sc_mod.analyze(content, "setup.sh", "shell")
         sc2 = [f for f in findings if f.rule_id == "SC2"]
         assert len(sc2) >= 1
-        assert all(f.severity == Severity.LOW for f in sc2)
+        assert all(f.severity == Severity.HIGH for f in sc2)
 
-    def test_sc2_trusted_source_low_confidence(self) -> None:
+    def test_sc2_trusted_source_keeps_normal_confidence(self) -> None:
         findings = sc_mod.analyze(
             "curl -LsSf https://astral.sh/uv/install.sh | sh", "setup.sh", "shell"
         )
         sc2 = [f for f in findings if f.rule_id == "SC2"]
-        assert all(f.confidence <= 0.15 for f in sc2)
+        assert len(sc2) >= 1
+        assert all(f.severity == Severity.HIGH and f.confidence > 0.15 for f in sc2)
 
     def test_sc2_trusted_domain_in_query_is_not_downgraded(self) -> None:
         findings = sc_mod.analyze(
@@ -2280,7 +2281,7 @@ class TestSupplyChainSafePatterns:
         assert len(sc2) >= 1
         assert all(f.severity == Severity.HIGH for f in sc2)
 
-    def test_sc2_pip_install_is_safe(self) -> None:
+    def test_sc2_get_pip_download_exec_remains_high(self) -> None:
         findings = sc_mod.analyze(
             "curl https://bootstrap.pypa.io/get-pip.py | python3", "setup.sh", "shell"
         )
@@ -2292,7 +2293,7 @@ class TestSupplyChainSafePatterns:
             if "curl" in (f.matched_text or "") or "get-pip" in (f.matched_text or "")
         ]
         assert len(pip_findings) >= 1
-        assert all(f.severity == Severity.LOW for f in pip_findings)
+        assert all(f.severity == Severity.HIGH for f in pip_findings)
 
     def test_sc2_evil_domain_stays_high(self) -> None:
         findings = sc_mod.analyze(
