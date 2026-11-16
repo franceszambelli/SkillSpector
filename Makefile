@@ -1,6 +1,6 @@
 .PHONY: help install install-dev langgraph-dev test test-unit test-provider openai anthropic nv_build gemini test-integration test-cov test-ci lint lint-fix format format-check clean build docker-build docker-smoke
 
-# Prefer uv if available, else use pip (set when Makefile is parsed)
+# Require uv for lock-consistent installs (resolved when Makefile is parsed)
 UV := $(shell command -v uv 2>/dev/null)
 
 # LangGraph Studio URL for `make langgraph-dev`.  Defaults to the hosted
@@ -32,8 +32,8 @@ endif
 # Default target. All targets assume the virtual env is already created and activated.
 help:
 	@echo "Available targets (venv must be created and activated first):"
-	@echo "  make install        - Install the package (uses uv if available, else pip)"
-	@echo "  make install-dev    - Install with dev dependencies (uses uv if available, else pip)"
+	@echo "  make install        - Install the package (requires uv and uv.lock)"
+	@echo "  make install-dev    - Install dev dependencies (requires uv and uv.lock)"
 	@echo "  make langgraph-dev  - Run LangGraph dev server (Studio at \$$LANGGRAPH_STUDIO_URL)"
 	@echo "  make test           - Run unit + integration tests"
 	@echo "  make test-unit      - Run unit tests only (no LLM calls)"
@@ -50,10 +50,12 @@ help:
 	@echo "  make docker-smoke   - Build and smoke test the Docker image"
 
 install:
-	@if [ -n "$(UV)" ]; then uv sync; else pip install -e .; fi
+	@test -n "$(UV)" || { echo "uv is required to honor uv.lock; unlocked pip fallback disabled" >&2; exit 2; }
+	uv sync --locked
 
 install-dev:
-	@if [ -n "$(UV)" ]; then uv sync --all-extras; else pip install -e ".[dev]"; fi
+	@test -n "$(UV)" || { echo "uv is required to honor uv.lock; unlocked pip fallback disabled" >&2; exit 2; }
+	uv sync --locked --all-extras
 
 # Run LangGraph dev server, opening Studio at LANGGRAPH_STUDIO_URL.
 langgraph-dev:
