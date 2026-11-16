@@ -1983,7 +1983,9 @@ def analyze(content: str, file_path: str, file_type: str) -> list[AnalyzerFindin
                 match.start(),
                 line_starts,
             )
-            if _is_safe_supply_chain_pattern(mt) or data_consumer:
+            # A familiar hostname is not evidence that downloaded executable code
+            # is trustworthy. Keep SC2 HIGH except for proven data-only stdin.
+            if data_consumer:
                 adj = min(confidence, 0.15)
                 sev = Severity.LOW
             else:
